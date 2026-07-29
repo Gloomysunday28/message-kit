@@ -1,0 +1,50 @@
+name: Release macOS App
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - run: npm ci
+      - name: Build
+        run: npm run app:build -- --target aarch64-apple-darwin
+      - name: Normalize asset name
+        id: asset
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SOURCE="$(find src-tauri/target/aarch64-apple-darwin/release/bundle/dmg -name '*.dmg' -print -quit)"
+          TARGET="LingDongDao_${VERSION}_aarch64.dmg"
+          cp "$SOURCE" "$TARGET"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "path=$TARGET" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "${{ steps.asset.outputs.path }}" --generate-notes
+      - name: Update Homebrew cask
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin main
+          git checkout main
+          node scripts/update-cask.mjs "${{ steps.asset.outputs.version }}" "${{ steps.asset.outputs.path }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/lingdongdao.rb
+          git commit -m "chore: update cask to ${{ steps.asset.outputs.version }}"
+          git push origin main

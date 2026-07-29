@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>灵动岛</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- webui-bootstrap-start -->
+    <script type="module">
+      let hot = null;
+      if (!window.__lingdongdaoHotLoaded) {
+        try {
+          hot = await window.__TAURI__.core.invoke("webui_current");
+        } catch {}
+      }
+      if (hot?.html?.trimStart().toLowerCase().startsWith("<!doctype")) {
+        window.__lingdongdaoHotLoaded = hot.version;
+        document.open();
+        document.write(hot.html);
+        document.close();
+      } else {
+        const script = document.createElement("script");
+        script.type = "module";
+        script.src = "/main.js";
+        document.head.appendChild(script);
+      }
+    </script>
+    <!-- webui-bootstrap-end -->
+  </head>
+  <body>
+    <main id="island" class="island" aria-label="灵动岛">
+      <section id="compact" class="compact">
+        <div class="app-side">
+          <div class="app-icon-wrap">
+            <img id="app-icon" class="app-icon" alt="" hidden />
+            <span id="app-fallback" class="app-fallback" hidden></span>
+            <i class="live-dot"></i>
+          </div>
+          <div class="compact-copy">
+            <strong id="app-name">识别中</strong>
+            <span id="app-state">跟随焦点</span>
+          </div>
+        </div>
+        <div class="notch-spacer" aria-hidden="true"></div>
+        <div class="controls-side">
+          <div class="signal" aria-hidden="true">
+            <i></i><i></i><i></i><i></i>
+          </div>
+          <button id="toggle-expand" class="icon-button chevron" title="展开" aria-label="展开灵动岛">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <section id="details" class="details" aria-hidden="true">
+        <div class="rule"></div>
+        <section id="codex-details" class="codex-details" hidden>
+          <div class="codex-header">
+            <div>
+              <span class="codex-kicker"><i></i> 最新 Codex 对话</span>
+              <strong id="codex-status">实时消息</strong>
+            </div>
+            <span id="codex-phase" class="codex-phase">实时</span>
+          </div>
+          <p id="codex-message" class="codex-message"></p>
+          <span class="codex-privacy">仅展示用户可见消息</span>
+        </section>
+        <div class="detail-row">
+          <div>
+            <span class="eyebrow">当前聚焦</span>
+            <strong id="detail-name">—</strong>
+            <span id="bundle-id" class="bundle-id">—</span>
+          </div>
+          <div class="focus-time">
+            <span class="eyebrow">专注时间</span>
+            <strong id="focus-time">00:00</strong>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="check-app-update" class="action-button">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M15.7 6.4A6.5 6.5 0 1 0 16.4 12M15.7 6.4V2.8m0 3.6h-3.6" />
+            </svg>
+            <span>App 更新</span>
+          </button>
+          <button id="check-ui-update" class="action-button">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M3.5 5.5h13v9h-13zM7 17h6M10 14.5V17" />
+            </svg>
+            <span>界面更新</span>
+          </button>
+          <button id="hide-island" class="action-button">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M2.5 10s2.7-4 7.5-4 7.5 4 7.5 4-2.7 4-7.5 4-7.5-4-7.5-4ZM4 4l12 12" />
+            </svg>
+            <span>暂时隐藏</span>
+          </button>
+        </div>
+        <p id="update-message" class="update-message">界面会自动保持最新</p>
+      </section>
+    </main>
+  </body>
+</html>

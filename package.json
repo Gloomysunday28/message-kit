@@ -1,0 +1,17 @@
+{
+  "name": "lingdongdao",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite src --host 127.0.0.1 --port 1421 --strictPort",
+    "build:webui": "node scripts/build-webui.mjs",
+    "tauri": "tauri",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.0",
+    "vite": "^7.0.0"
+  }
+}
