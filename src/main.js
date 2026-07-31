@@ -11,6 +11,12 @@ const PET_REACTIONS = [
   { mood: "surprised", message: "呀！被发现了" },
   { mood: "happy", message: "陪你一会儿" },
 ];
+const PET_PEEK_MESSAGES = [
+  "偷偷看你一眼",
+  "我来陪你啦",
+  "在忙什么呀",
+  "记得眨眨眼",
+];
 
 if (isDetailsMode) {
   document.documentElement.classList.add("details-mode");
@@ -33,6 +39,8 @@ const state = {
   petPressTimer: null,
   petYawning: false,
   petFallbackStartedAt: Date.now(),
+  petWindowVisible: false,
+  petPeekMessageIndex: 0,
 };
 
 function renderApp(app) {
@@ -188,7 +196,7 @@ function renderPet() {
   const isWorking = focusedSeconds() >= PET_SLEEPY_SECONDS;
   const isIdle = state.idleSeconds >= PET_IDLE_SECONDS;
   const isInteracting = now < state.petOverrideUntil;
-  const visible = isIdle || isWorking || isInteracting || state.petYawning;
+  const visible = !state.expanded && (isIdle || isWorking || isInteracting || state.petYawning);
 
   let mood = state.petMood;
   if (!isInteracting) {
@@ -200,11 +208,20 @@ function renderPet() {
 
   state.petMood = mood;
   document.documentElement.classList.toggle("pet-active", visible);
+  if (state.petWindowVisible !== visible) {
+    state.petWindowVisible = visible;
+    invoke("set_pet_visible", { visible }).catch(() => {});
+  }
   const pet = $("island-pet");
   const previousMood = pet.dataset.mood;
   pet.dataset.mood = mood;
   pet.setAttribute("aria-hidden", String(!visible));
   pet.tabIndex = visible ? 0 : -1;
+  if (mood === "peek" && previousMood !== "peek") {
+    const message = PET_PEEK_MESSAGES[state.petPeekMessageIndex % PET_PEEK_MESSAGES.length];
+    state.petPeekMessageIndex += 1;
+    setPetMessage(message, 3600);
+  }
   if (mood === "sleepy" && previousMood !== "sleepy") {
     setPetMessage("工作很久啦，眯一下", 3200);
   }
@@ -256,8 +273,9 @@ function updatePetGaze(event) {
 
 async function setExpanded(expanded) {
   if (isDetailsMode) return;
-  await invoke("set_details_visible", { visible: expanded }).catch(() => {});
   state.expanded = expanded;
+  renderPet();
+  await invoke("set_details_visible", { visible: expanded }).catch(() => {});
   $("island").classList.toggle("expanded", expanded);
   $("toggle-expand").title = expanded ? "收起" : "展开";
   $("toggle-expand").setAttribute("aria-label", expanded ? "收起灵动岛" : "展开灵动岛");

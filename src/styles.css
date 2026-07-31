@@ -34,6 +34,7 @@ button {
 }
 
 .island {
+  position: relative;
   width: 100%;
   min-height: calc(var(--notch-height) + 34px);
   margin: 0;
@@ -45,6 +46,7 @@ button {
 
 .compact {
   position: relative;
+  z-index: 2;
   display: flex;
   width: var(--notch-width);
   height: calc(var(--notch-height) + 34px);
@@ -59,8 +61,8 @@ button {
   --pet-look-x: 0px;
   --pet-look-y: 0px;
   position: absolute;
-  z-index: 4;
-  top: calc(var(--notch-height) - 5px);
+  z-index: 1;
+  top: calc(var(--notch-height) + 38px);
   left: 50%;
   width: 62px;
   height: 39px;
@@ -72,7 +74,7 @@ button {
   cursor: default;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -23px) scale(0.88);
+  transform: translate(-50%, -20px) scale(0.88);
   transform-origin: center top;
   transition:
     opacity 180ms ease,
@@ -83,18 +85,6 @@ button {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0) scale(1);
-}
-
-.pet-active .app-side,
-.pet-active .controls-side {
-  opacity: 0;
-  transform: scale(0.92);
-  pointer-events: none;
-}
-
-.app-side,
-.controls-side {
-  transition: opacity 180ms ease, transform 260ms ease;
 }
 
 .pet-head {

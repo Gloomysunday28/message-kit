@@ -407,6 +407,29 @@ fn set_details_visible(app: AppHandle, visible: bool) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_pet_visible(window: WebviewWindow, visible: bool) -> Result<(), String> {
+    if window.label() != "main" {
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let metrics = read_notch_metrics(&window)?;
+        return set_native_window_frame(
+            &window,
+            metrics.width,
+            metrics.height + if visible { 82.0 } else { 34.0 },
+            true,
+        );
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        window
+            .set_size(tauri::LogicalSize::new(195.0, if visible { 116.0 } else { 68.0 }))
+            .map_err(|error| error.to_string())
+    }
+}
+
+#[tauri::command]
 fn hide_island(app: AppHandle) -> Result<(), String> {
     if let Some(details) = app.get_webview_window("details") {
         let _ = details.hide();
@@ -1169,6 +1192,7 @@ pub fn run() {
             codex_host_icon,
             notch_metrics,
             set_details_visible,
+            set_pet_visible,
             hide_island,
             check_homebrew_update,
             install_homebrew_update,
