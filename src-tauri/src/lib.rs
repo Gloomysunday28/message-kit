@@ -27,6 +27,13 @@ const WEBUI_MANIFEST_URL: &str =
 const WEBUI_HTML_URL: &str =
     "https://github.com/Gloomysunday28/message-kit/releases/download/webui/webui.html";
 
+#[cfg(target_os = "macos")]
+#[link(name = "CoreGraphics", kind = "framework")]
+extern "C" {
+    #[link_name = "CGEventSourceSecondsSinceLastEventType"]
+    fn cg_event_source_seconds_since_last_event_type(state_id: i32, event_type: u32) -> f64;
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct FocusedApp {
@@ -109,6 +116,19 @@ fn codex_current(state: State<'_, CodexActivityState>) -> CodexActivity {
         .lock()
         .map(|activity| activity.clone())
         .unwrap_or_default()
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn system_idle_seconds() -> f64 {
+    // Combined session + any input event reports keyboard, pointer and trackpad inactivity.
+    unsafe { cg_event_source_seconds_since_last_event_type(0, u32::MAX) }.max(0.0)
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn system_idle_seconds() -> f64 {
+    0.0
 }
 
 #[cfg(target_os = "macos")]
@@ -1155,6 +1175,7 @@ pub fn run() {
             webui_current,
             check_webui_update,
             codex_current,
+            system_idle_seconds,
         ])
         .run(tauri::generate_context!())
         .expect("启动灵动岛失败");
