@@ -3,20 +3,6 @@ const { invoke } = window.__TAURI__.core;
 const $ = (id) => document.getElementById(id);
 const SELF_BUNDLE_ID = "com.weiguang.lingdongdao";
 const isDetailsMode = new URLSearchParams(location.search).get("mode") === "details";
-const PET_IDLE_SECONDS = 10;
-const PET_SLEEPY_SECONDS = 45 * 60;
-const PET_REACTIONS = [
-  { mood: "happy", message: "喵，继续加油" },
-  { mood: "love", message: "收到摸摸啦" },
-  { mood: "surprised", message: "呀！被发现了" },
-  { mood: "happy", message: "陪你一会儿" },
-];
-const PET_PEEK_MESSAGES = [
-  "偷偷看你一眼",
-  "我来陪你啦",
-  "在忙什么呀",
-  "记得眨眨眼",
-];
 
 if (isDetailsMode) {
   document.documentElement.classList.add("details-mode");
@@ -31,16 +17,6 @@ const state = {
   appStartedAt: Date.now(),
   polling: false,
   checkingWebui: false,
-  idleSeconds: 0,
-  petMood: "peek",
-  petOverrideUntil: 0,
-  petReactionIndex: 0,
-  petMessageTimer: null,
-  petPressTimer: null,
-  petYawning: false,
-  petFallbackStartedAt: Date.now(),
-  petWindowVisible: false,
-  petPeekMessageIndex: 0,
 };
 
 function renderApp(app) {
@@ -48,7 +24,6 @@ function renderApp(app) {
   const changed = state.app?.bundleId !== app.bundleId;
   if (changed) {
     state.appStartedAt = Date.now();
-    state.petFallbackStartedAt = Date.now();
   }
   const retainedIcon = app.iconDataUrl
     || (!changed ? state.app?.iconDataUrl : null);
@@ -115,7 +90,6 @@ function renderPrimary() {
 
 function updateCodexActivity(activity) {
   state.codex = activity;
-  if (activity?.active) state.petFallbackStartedAt = Date.now();
   renderPrimary();
 }
 
@@ -169,112 +143,9 @@ function renderFocusTime() {
     : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function isLateNight(date = new Date()) {
-  const hour = date.getHours();
-  return hour >= 23 || hour < 6;
-}
-
-function focusedSeconds() {
-  return Math.max(0, Math.floor((Date.now() - state.appStartedAt) / 1000));
-}
-
-function setPetMessage(message, duration = 2600) {
-  const bubble = $("pet-bubble");
-  bubble.textContent = message;
-  bubble.classList.toggle("visible", Boolean(message));
-  clearTimeout(state.petMessageTimer);
-  if (message) {
-    state.petMessageTimer = setTimeout(() => {
-      bubble.classList.remove("visible");
-    }, duration);
-  }
-}
-
-function renderPet() {
-  if (isDetailsMode) return;
-  const now = Date.now();
-  const isWorking = focusedSeconds() >= PET_SLEEPY_SECONDS;
-  const isIdle = state.idleSeconds >= PET_IDLE_SECONDS;
-  const isInteracting = now < state.petOverrideUntil;
-  const visible = !state.expanded && (isIdle || isWorking || isInteracting || state.petYawning);
-
-  let mood = state.petMood;
-  if (!isInteracting) {
-    if (state.petYawning) mood = "yawn";
-    else if (focusedSeconds() >= PET_SLEEPY_SECONDS) mood = "sleepy";
-    else if (isIdle) mood = "peek";
-    else mood = "hidden";
-  }
-
-  state.petMood = mood;
-  document.documentElement.classList.toggle("pet-active", visible);
-  if (state.petWindowVisible !== visible) {
-    state.petWindowVisible = visible;
-    invoke("set_pet_visible", { visible }).catch(() => {});
-  }
-  const pet = $("island-pet");
-  const previousMood = pet.dataset.mood;
-  pet.dataset.mood = mood;
-  pet.setAttribute("aria-hidden", String(!visible));
-  pet.tabIndex = visible ? 0 : -1;
-  if (mood === "peek" && previousMood !== "peek") {
-    const message = PET_PEEK_MESSAGES[state.petPeekMessageIndex % PET_PEEK_MESSAGES.length];
-    state.petPeekMessageIndex += 1;
-    setPetMessage(message, 3600);
-  }
-  if (mood === "sleepy" && previousMood !== "sleepy") {
-    setPetMessage("工作很久啦，眯一下", 3200);
-  }
-}
-
-async function pollSystemIdle() {
-  if (isDetailsMode) return;
-  try {
-    state.idleSeconds = await invoke("system_idle_seconds");
-  } catch {
-    state.idleSeconds = Math.floor((Date.now() - state.petFallbackStartedAt) / 1000);
-  }
-  renderPet();
-}
-
-function reactPet(mood, message, duration = 3600) {
-  state.petMood = mood;
-  state.petOverrideUntil = Date.now() + duration;
-  setPetMessage(message);
-  renderPet();
-}
-
-function triggerPetClick() {
-  const reaction = PET_REACTIONS[state.petReactionIndex % PET_REACTIONS.length];
-  state.petReactionIndex += 1;
-  reactPet(reaction.mood, reaction.message);
-}
-
-function scheduleLateNightYawn() {
-  if (!isLateNight() || isDetailsMode) return;
-  state.petYawning = true;
-  state.petOverrideUntil = Date.now() + 5200;
-  setPetMessage("哈——该休息啦", 3600);
-  renderPet();
-  setTimeout(() => {
-    state.petYawning = false;
-    renderPet();
-  }, 4800);
-}
-
-function updatePetGaze(event) {
-  const pet = $("island-pet");
-  const bounds = pet.getBoundingClientRect();
-  const x = Math.max(-1, Math.min(1, (event.clientX - bounds.left) / bounds.width * 2 - 1));
-  const y = Math.max(-1, Math.min(1, (event.clientY - bounds.top) / bounds.height * 2 - 1));
-  pet.style.setProperty("--pet-look-x", `${(x * 1.7).toFixed(2)}px`);
-  pet.style.setProperty("--pet-look-y", `${(y * 1.3).toFixed(2)}px`);
-}
-
 async function setExpanded(expanded) {
   if (isDetailsMode) return;
   state.expanded = expanded;
-  renderPet();
   await invoke("set_details_visible", { visible: expanded }).catch(() => {});
   $("island").classList.toggle("expanded", expanded);
   $("toggle-expand").title = expanded ? "收起" : "展开";
@@ -357,48 +228,6 @@ $("toggle-expand").addEventListener("click", (event) => {
 
 $("compact").addEventListener("dblclick", () => setExpanded(!state.expanded));
 
-$("island-pet").addEventListener("pointerenter", () => {
-  state.petOverrideUntil = Date.now() + 8000;
-  renderPet();
-});
-
-$("island-pet").addEventListener("pointermove", updatePetGaze);
-
-$("island-pet").addEventListener("pointerleave", () => {
-  $("island-pet").style.setProperty("--pet-look-x", "0px");
-  $("island-pet").style.setProperty("--pet-look-y", "0px");
-});
-
-$("island-pet").addEventListener("pointerdown", (event) => {
-  event.stopPropagation();
-  state.petFallbackStartedAt = Date.now();
-  state.idleSeconds = 0;
-  $("island-pet").setPointerCapture?.(event.pointerId);
-  state.petPressTimer = setTimeout(() => {
-    state.petPressTimer = null;
-    reactPet("purring", "呼噜呼噜…", 5200);
-  }, 620);
-});
-
-$("island-pet").addEventListener("pointerup", (event) => {
-  event.stopPropagation();
-  if (state.petPressTimer) {
-    clearTimeout(state.petPressTimer);
-    state.petPressTimer = null;
-    triggerPetClick();
-  }
-});
-
-$("island-pet").addEventListener("pointercancel", () => {
-  clearTimeout(state.petPressTimer);
-  state.petPressTimer = null;
-});
-
-$("island-pet").addEventListener("dblclick", (event) => {
-  event.stopPropagation();
-  reactPet("love", "今天也陪着你", 4400);
-});
-
 $("check-app-update").addEventListener("click", () => {
   if ($("check-app-update").dataset.install === "true") {
     installAppUpdate();
@@ -419,14 +248,10 @@ document.addEventListener("visibilitychange", () => {
 });
 
 applyNotchMetrics();
+invoke("set_pet_visible", { visible: false }).catch(() => {});
 connectCodexActivity();
 pollFrontmostApp();
 setInterval(pollFrontmostApp, 700);
 setInterval(renderFocusTime, 1000);
-pollSystemIdle();
-setInterval(pollSystemIdle, 2500);
-setInterval(renderPet, 1000);
-setTimeout(scheduleLateNightYawn, 12_000);
-setInterval(scheduleLateNightYawn, 90_000);
 setTimeout(() => checkWebuiUpdate({ quiet: true }), 2600);
 setInterval(() => checkWebuiUpdate({ quiet: true }), 15_000);
