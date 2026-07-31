@@ -1,6 +1,6 @@
 cask "lingdongdao" do
-  version "0.1.0"
-  sha256 "2e98cbc61072790314e87b3553e7c8ddba09724807ff97875c5ca071089b68a4"
+  version "0.1.1"
+  sha256 "9ff769af450d57277e3f64c225dcc8bba97f7770dc8d0e8ea60d28ee3f90af3e"
 
   url "https://github.com/Gloomysunday28/message-kit/releases/download/v#{version}/LingDongDao_#{version}_aarch64.dmg"
   name "LingDongDao"
